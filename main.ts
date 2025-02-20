@@ -17,6 +17,86 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
       name: 'Add missing due dates (one month from today)',
       callback: () => this.addMissingDueDates(),
     });
+
+    this.addCommand({
+      id: 'update-overdue-tasks',
+      name: 'Update overdue tasks (tomorrow)',
+      callback: () => this.updateOverdueTasks(),
+    });
+
+    this.addCommand({
+      id: 'update-missing-due-dates-today',
+      name: 'Update missing due dates to today',
+      callback: () => this.updateMissingDueDatesToday(),
+    });
+  }
+
+  // Command function: Update missing due dates to today.
+  async updateMissingDueDatesToday() {
+    const files = this.app.vault.getMarkdownFiles();
+    // Regex to match tasks (lines starting with "- [ ]") that do not contain the "📅" marker.
+    const taskWithoutDateRegex = /^(- \[ \] .+)(?!.*📅)/gm;
+    let changesMade = false;
+
+    for (const file of files) {
+      let content = await this.app.vault.read(file);
+      let hasChange = false;
+
+      // Replace each matched task by appending a date set to today.
+      const updatedContent = content.replace(taskWithoutDateRegex, (match, taskText) => {
+        const today = new Date().toISOString().slice(0, 10);
+        hasChange = true;
+        return `${taskText} 📅 ${today}`;
+      });
+
+      if (hasChange) {
+        await this.app.vault.modify(file, updatedContent);
+        console.log(`Added missing due dates in ${file.path}`);
+        changesMade = true;
+      }
+    }
+
+    new Notice(
+      changesMade
+        ? 'Missing due dates added (today)!'
+        : 'No tasks without due dates found.'
+    );
+  }
+
+  // Command function: Update overdue tasks to tomorrow.
+  async updateOverdueTasks() {
+    const files = this.app.vault.getMarkdownFiles();
+    // Regex to match tasks with due dates that are overdue.
+    const overdueTaskRegex = /📅\s(\d{4}-\d{2}-\d{2})/g
+    let changesMade = false;
+
+    for (const file of files) {
+      let content = await this.app.vault.read(file);
+      let hasChange = false;
+
+      // Replace each overdue task by setting the due date to tomorrow.
+      const updatedContent = content.replace(overdueTaskRegex, (match, dateStr) => {
+        const dueDate = new Date(dateStr);
+        const today = new Date();
+        if (isNaN(dueDate.getTime()) || dueDate >= today) return match;
+        today.setDate(today.getDate() + 1);
+        const newDateStr = today.toISOString().slice(0, 10);
+        hasChange = true;
+        return `📅 ${newDateStr}`;
+      });
+
+      if (hasChange) {
+        await this.app.vault.modify(file, updatedContent);
+        console.log(`Updated overdue tasks in ${file.path}`);
+        changesMade = true;
+      }
+    } 
+
+    new Notice(
+      changesMade
+        ? 'Overdue tasks updated to tomorrow!'
+        : 'No overdue tasks found.'
+    );
   }
 
   // Command function: Update dates that are already present.
