@@ -2,60 +2,89 @@ import { Plugin, TFile, Notice } from 'obsidian';
 
 export default class UpdateTaskDueDatesPlugin extends Plugin {
   async onload() {
-    // Register a command so you can run the update via the Command Palette.
+    console.log("Update Task Due Dates plugin loaded.");
+
+    // Command to update existing due dates by adding one year.
     this.addCommand({
-      id: 'update-task-due-dates',
-      name: 'Update Task Due Dates to One Year Later',
-      callback: () => this.updateDueDates(),
+      id: 'update-existing-due-dates',
+      name: 'Update existing due dates to one year later',
+      callback: () => this.updateExistingDueDates(),
+    });
+
+    // Command to add missing due dates (set to one month from today).
+    this.addCommand({
+      id: 'add-missing-due-dates',
+      name: 'Add missing due dates (one month from today)',
+      callback: () => this.addMissingDueDates(),
     });
   }
 
-  async updateDueDates() {
-    // Get all markdown files in the vault.
+  // Command function: Update dates that are already present.
+  async updateExistingDueDates() {
     const files = this.app.vault.getMarkdownFiles();
-    console.log(`Found ${files.length} markdown files`);
+    // Regex to match a date in the format "📅 2023-08-09" (with exactly one space after the emoji).
+    const dueDateRegex = /📅\s(\d{4}-\d{2}-\d{2})/g;
+    let changesMade = false;
 
-    // Regex to match a due date in the format "due: YYYY-MM-DD".
-    /*
-         📅 2023-08-09 
-        const dueDateRegex = /📅\s*(\d{4}-\d{2}-\d{2})/g;
-        console.log('Updating due dates...');
-    
-    */
-    const dueDateRegex = /📅\s{2,}(\d{4}-\d{2}-\d{2})/g;
-    console.log('Updating due dates...');
-
-    // Loop through each file.
     for (const file of files) {
       let content = await this.app.vault.read(file);
-      console.log(`Checking due dates in ${file.path}`);
       let hasChange = false;
 
-      // Replace each found due date with a new date, one year later.
+      // Replace each found date with a new date one year later.
       const updatedContent = content.replace(dueDateRegex, (match, dateStr) => {
         const oldDate = new Date(dateStr);
-        console.log(`Found due date: ${dateStr}`);
-        if (isNaN(oldDate.getTime())) {
-          // If the date is invalid, do not modify it.
-          return match;
-        }
-        // Add one year to the date.
-        oldDate.setFullYear(/*oldDate.getFullYear() + 1*/2025);
-
-        // Format the new date as YYYY-MM-DD.
+        if (isNaN(oldDate.getTime())) return match;
+        oldDate.setFullYear(oldDate.getFullYear() + 1);
         const newDateStr = oldDate.toISOString().slice(0, 10);
         hasChange = true;
         return `📅 ${newDateStr}`;
       });
 
-      // If any changes were made, write the updated content back to the file.
       if (hasChange) {
         await this.app.vault.modify(file, updatedContent);
         console.log(`Updated due dates in ${file.path}`);
+        changesMade = true;
       }
     }
-    console.log('Due dates updated!');
-    // Give the user a notification once the process is complete.
-    new Notice('Due dates updated to one year from now!');
+
+    new Notice(
+      changesMade
+        ? 'Existing due dates updated to one year later!'
+        : 'No due dates found to update.'
+    );
+  }
+
+  // Command function: Add a missing due date to tasks.
+  async addMissingDueDates() {
+    const files = this.app.vault.getMarkdownFiles();
+    // Regex to match tasks (lines starting with "- [ ]") that do not contain the "📅" marker.
+    const taskWithoutDateRegex = /^(- \[ \] .+)(?!.*📅)/gm;
+    let changesMade = false;
+
+    for (const file of files) {
+      let content = await this.app.vault.read(file);
+      let hasChange = false;
+
+      // Replace each matched task by appending a date set to one month from today.
+      const updatedContent = content.replace(taskWithoutDateRegex, (match, taskText) => {
+        let newDate = new Date();
+        newDate.setMonth(newDate.getMonth() + 1);
+        const newDateStr = newDate.toISOString().slice(0,10);
+        hasChange = true;
+        return `${taskText} 📅 ${newDateStr}`;
+      });
+
+      if (hasChange) {
+        await this.app.vault.modify(file, updatedContent);
+        console.log(`Added missing due dates in ${file.path}`);
+        changesMade = true;
+      }
+    }
+
+    new Notice(
+      changesMade
+        ? 'Missing due dates added (one month from today)!'
+        : 'No tasks without due dates found.'
+    );
   }
 }
