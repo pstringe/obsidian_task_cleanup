@@ -16,8 +16,13 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     console.log(`Found ${files.length} markdown files`);
 
     // Regex to match a due date in the format "due: YYYY-MM-DD".
-    /* 📅 2023-08-09 */
-    const dueDateRegex = /📅\s*(\d{4}-\d{2}-\d{2})/g;
+    /*
+         📅 2023-08-09 
+        const dueDateRegex = /📅\s*(\d{4}-\d{2}-\d{2})/g;
+        console.log('Updating due dates...');
+    
+    */
+    const dueDateRegex = /📅\s{2,}(\d{4}-\d{2}-\d{2})/g;
     console.log('Updating due dates...');
 
     // Loop through each file.
@@ -35,12 +40,12 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
           return match;
         }
         // Add one year to the date.
-        oldDate.setFullYear(oldDate.getFullYear() + 1);
+        oldDate.setFullYear(/*oldDate.getFullYear() + 1*/2025);
 
         // Format the new date as YYYY-MM-DD.
         const newDateStr = oldDate.toISOString().slice(0, 10);
         hasChange = true;
-        return `due: ${newDateStr}`;
+        return `📅 ${newDateStr}`;
       });
 
       // If any changes were made, write the updated content back to the file.
