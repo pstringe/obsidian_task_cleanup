@@ -1,7 +1,7 @@
 import { Plugin, TFile, Notice } from 'obsidian';
 type Task = {
   title?: string;
-  dueDate?: string;
+  due?: string;
   tags: string[];
 };
 
@@ -99,7 +99,7 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
   parseDatesTagsTitles(taskText : string){
     const task : Task = {
       title: "",
-      dueDate: "",
+      due: "",
       tags: []
     };
     let regexDateMatch = /📅\s(\d{4}-\d{2}-\d{2})/g;
@@ -108,7 +108,7 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     //parse due date
     let dateMatch = taskText.match(regexDateMatch);
     if (dateMatch) {
-      task.dueDate = dateMatch[0].slice(2);
+      task.due = dateMatch[0].slice(2);
     }
         
     //parse tags
@@ -139,7 +139,7 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     const url = this.generateObsidianUrlFromDirAndTitle(directory, data.title ?? "");
     const noteContent = `---
 title: ${data.title}
-due_date: ${data.dueDate}
+date: ${data.due}
 tags: ${data.tags.join(', ')}
 --- `;
     this.app.vault.create(notePath, noteContent);
@@ -150,7 +150,7 @@ tags: ${data.tags.join(', ')}
   replaceTaskWithLink(file: TFile, task: string, link: string) {
     this.app.vault.process(file, (content) => {
       console.log('replace', {file});
-      return content.replace(task, link);
+      return content.replace(task, `- [ ] ${link}`);
     });
   }
 
