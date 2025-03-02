@@ -120,7 +120,8 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     
     //parse title
     let titleStart = taskParts.findIndex((part) => part.startsWith("#") || part.startsWith("📅"));
-    task.title = `TASK_${taskParts.slice(0, titleStart).join(' ')}`;
+    console.log({titleStart});
+    task.title = `TASK_${taskParts.slice(0, (titleStart > 0 ? titleStart : taskParts.length)).join(' ')}`;
 
     return task;
   }
