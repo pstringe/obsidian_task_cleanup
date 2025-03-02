@@ -29,6 +29,81 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
       name: 'Update missing due dates to today',
       callback: () => this.updateMissingDueDatesToday(),
     });
+
+    //Command to convert tasks in a directory into notes with frontmatter
+    this.addCommand({
+      id: 'convert-tasks-to-notes',
+      name: 'Convert tasks in directory to notes',
+      callback: () => this.convertTasksToNotes(),
+    });
+  }
+
+  // Command function: Convert tasks in a directory into notes with frontmatter
+  async convertTasksToNotes() {
+    const files = this.app.vault.getMarkdownFiles();
+    console.log({files});
+    for (let file of files) {
+      console.log({file});
+      //this.app.vault.process(file, (data) => {
+      //console.log({data});
+      this.convertTasksToNotesInFile(file);
+      //  return data;
+      //})
+    }
+
+    new Notice(
+      files.length > 0
+        ? 'Tasks converted to notes!'
+        : 'No tasks found to convert.'
+    );
+  }
+  convertTasksToNotesInFile(file: TFile) {
+    const tasks = this.extractTasksFromNotes(file);
+    console.log({tasks});
+    if (tasks.length === 0) return;
+    for (let task of tasks) {
+      console.log({tasks});
+      const link = this.createNoteFromTask(file, task);
+      console.log({link});
+      this.replaceTaskWithLink(file, task, link);
+
+    }
+  }
+
+  // Extract tasks from notes, return array
+  extractTasksFromNotes(file: TFile) {
+    let tasks: string[] = [];
+    const taskRegex = /^- \[ \] .+/gm;
+    console.log("extract", {file});
+    this.app.vault.process(file, (data) => {
+      console.log({data});
+      const match = data.match(taskRegex) ?? [];
+      console.log({match});
+      console.log("before: ", {tasks})
+      tasks = [...tasks, ...match];
+      console.log("after", {tasks});
+      return data;
+    })
+    return tasks;
+  }
+
+  // Create note from task, return link to note as string
+  createNoteFromTask(file: TFile, task: string) {
+    const noteTitle = task.slice(6).trim();
+    const notePath = `${file.path.slice(0, -3)}/${noteTitle}.md`;
+    const noteContent = `---
+    title: ${noteTitle}
+    ---   `;
+    this.app.vault.create(notePath, noteContent);
+    return `[[${notePath}]]`;
+  }
+
+  //replace task in file with link to note
+  replaceTaskWithLink(file: TFile, task: string, link: string) {
+    this.app.vault.process(file, (content) => {
+      console.log('replace', {file});
+      return content.replace(task, link);
+    });
   }
 
   // Command function: Update missing due dates to today.
