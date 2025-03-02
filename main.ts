@@ -84,6 +84,10 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     return tasks;
   }
 
+  generateObsidianUrlFromDirAndTitle(dir: string, title: string) {
+    return `obsidian://open?vault=${encodeURIComponent(this.app.vault.getName())}&file=${encodeURIComponent(dir + "/" + title)}.md`;
+  
+  }
   // Create note from task, return link to note as string
   createNoteFromTask(file: TFile, task: string) {
     const noteTitle = task.slice(6).trim();
@@ -92,11 +96,12 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
       this.app.vault.createFolder(directory);
     }
     const notePath = `${directory}/${noteTitle}.md`;
+    const url = this.generateObsidianUrlFromDirAndTitle(directory, noteTitle);
     const noteContent = `---
     title: ${noteTitle}
     ---   `;
     this.app.vault.create(notePath, noteContent);
-    return `[${noteTitle}](${notePath})`;
+    return `[${noteTitle}](${url})`;
   }
 
   //replace task in file with link to note
