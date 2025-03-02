@@ -87,12 +87,16 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
   // Create note from task, return link to note as string
   createNoteFromTask(file: TFile, task: string) {
     const noteTitle = task.slice(6).trim();
-    const notePath = `${file.path.slice(0, -3)}/${noteTitle}.md`;
+    const directory = file.path.slice(0, -3);
+    if (!this.app.vault.getAbstractFileByPath(directory)) {
+      this.app.vault.createFolder(directory);
+    }
+    const notePath = `${directory}/${noteTitle}.md`;
     const noteContent = `---
     title: ${noteTitle}
     ---   `;
     this.app.vault.create(notePath, noteContent);
-    return `[[${notePath}]]`;
+    return `[${noteTitle}](${notePath})`;
   }
 
   //replace task in file with link to note
