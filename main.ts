@@ -44,11 +44,7 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     console.log({files});
     for (let file of files) {
       console.log({file});
-      //this.app.vault.process(file, (data) => {
-      //console.log({data});
-      this.convertTasksToNotesInFile(file);
-      //  return data;
-      //})
+      await this.convertTasksToNotesInFile(file);
     }
 
     new Notice(
@@ -57,8 +53,9 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
         : 'No tasks found to convert.'
     );
   }
-  convertTasksToNotesInFile(file: TFile) {
-    const tasks = this.extractTasksFromNotes(file);
+
+  async convertTasksToNotesInFile(file: TFile) {
+    const tasks = await this.extractTasksFromNotes(file);
     console.log({tasks});
     if (tasks.length === 0) return;
     for (let task of tasks) {
@@ -71,11 +68,11 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
   }
 
   // Extract tasks from notes, return array
-  extractTasksFromNotes(file: TFile) {
+  async extractTasksFromNotes(file: TFile) {
     let tasks: string[] = [];
     const taskRegex = /^- \[ \] .+/gm;
     console.log("extract", {file});
-    this.app.vault.process(file, (data) => {
+    await this.app.vault.process(file, (data) => {
       console.log({data});
       const match = data.match(taskRegex) ?? [];
       console.log({match});
