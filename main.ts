@@ -1,4 +1,9 @@
 import { Plugin, TFile, Notice } from 'obsidian';
+type Task = {
+  title?: string;
+  dueDate?: string;
+  tags: string[];
+};
 
 export default class UpdateTaskDueDatesPlugin extends Plugin {
   async onload() {
@@ -88,6 +93,38 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     return `obsidian://open?vault=${encodeURIComponent(this.app.vault.getName())}&file=${encodeURIComponent(dir + "/" + title)}.md`;
   
   }
+
+
+
+  parseDatesTagsTitles(taskText : string){
+    const task : Task = {
+      title: "",
+      dueDate: "",
+      tags: []
+    };
+    let regexDateMatch = /📅\s(\d{4}-\d{2}-\d{2})/g;
+    let taskParts = taskText.split(' ');
+        
+    //parse due date
+    let dateMatch = taskText.match(regexDateMatch);
+    if (dateMatch) {
+      task.dueDate = dateMatch[0].slice(2);
+    }
+        
+    //parse tags
+    for (let i = 0; i < taskParts.length; i++) {
+      if (taskParts[i].startsWith("#")) {
+        task.tags.push(taskParts[i].slice(1));
+      }
+    }
+    
+    //parse title
+    let titleStart = taskParts.findIndex((part) => part.startsWith("#") || part.startsWith("📅"));
+    task.title = taskParts.slice(0, titleStart).join(' ');
+
+    return task;
+  }
+
   // Create note from task, return link to note as string
   createNoteFromTask(file: TFile, task: string) {
     const noteTitle = task.slice(6).trim();
@@ -95,13 +132,18 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     if (!this.app.vault.getAbstractFileByPath(directory)) {
       this.app.vault.createFolder(directory);
     }
-    const notePath = `${directory}/${noteTitle}.md`;
-    const url = this.generateObsidianUrlFromDirAndTitle(directory, noteTitle);
+
+    const data : Task = this.parseDatesTagsTitles(noteTitle);
+    console.log({data});
+    const notePath = `${directory}/${data.title}.md`;
+    const url = this.generateObsidianUrlFromDirAndTitle(directory, data.title ?? "");
     const noteContent = `---
-    title: ${noteTitle}
-    ---   `;
+title: ${data.title}
+due_date: ${data.dueDate}
+tags: ${data.tags.join(', ')}
+--- `;
     this.app.vault.create(notePath, noteContent);
-    return `[${noteTitle}](${url})`;
+    return `[${data.title}](${url})`;
   }
 
   //replace task in file with link to note
