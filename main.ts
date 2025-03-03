@@ -3,6 +3,7 @@ type Task = {
   title?: string;
   due?: string;
   tags: string[];
+  link : string;
 };
 
 export default class UpdateTaskDueDatesPlugin extends Plugin {
@@ -65,9 +66,9 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     if (tasks.length === 0) return;
     for (let task of tasks) {
       console.log({tasks});
-      const link = this.createNoteFromTask(file, task);
-      console.log({link});
-      this.replaceTaskWithLink(file, task, link);
+      const data = this.createNoteFromTask(file, task);
+      console.log({data});
+      this.replaceTaskWithLink(file, task, data, data.link);
 
     }
   }
@@ -100,7 +101,8 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     const task : Task = {
       title: "",
       due: "",
-      tags: []
+      tags: [],
+      link: ""
     };
     let regexDateMatch = /📅\s(\d{4}-\d{2}-\d{2})/g;
     let taskParts = taskText.split(' ');
@@ -138,20 +140,21 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     console.log({data});
     const notePath = `${directory}/${data.title}.md`;
     const url = this.generateObsidianUrlFromDirAndTitle(directory, data.title ?? "");
+    data.link = `[${data.title}](${url})`;
     const noteContent = `---
 title: ${data.title}
 date: ${data.due}
 tags: ${data.tags.join(', ')}
 --- `;
     this.app.vault.create(notePath, noteContent);
-    return `[${data.title}](${url})`;
+    return data;
   }
 
   //replace task in file with link to note
-  replaceTaskWithLink(file: TFile, task: string, link: string) {
+  replaceTaskWithLink(file: TFile, task: string, data: Task, link: string) {
     this.app.vault.process(file, (content) => {
       console.log('replace', {file});
-      return content.replace(task, `- [ ] ${link}`);
+      return content.replace(task, `- [ ] ${link} ${data.tags.map((tag) => `#${tag}`).join(' ') ?? ''} ${data.due ? `📅 ${data.due}` : ''}`);
     });
   }
 
