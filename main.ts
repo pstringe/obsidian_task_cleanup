@@ -97,8 +97,6 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
   
   }
 
-
-
   parseDatesTagsTitles(taskText : string){
     const task : Task = {
       title: "",
@@ -146,7 +144,7 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
     const noteContent = `---
 title: ${data.title}
 date: ${data.due}
-tags: ${data.tags.join(', ')}
+tags: ${data.tags.map((tag) => `\n- ${tag}`).join('')}
 --- `;
     this.app.vault.create(notePath, noteContent);
     return data;
