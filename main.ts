@@ -1,4 +1,10 @@
 import { Plugin, TFile, Notice } from 'obsidian';
+type Task = {
+  title?: string;
+  due?: string;
+  tags: string[];
+  link : string;
+};
 
 export default class UpdateTaskDueDatesPlugin extends Plugin {
   async onload() {
@@ -28,6 +34,127 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
       id: 'update-missing-due-dates-today',
       name: 'Update missing due dates to today',
       callback: () => this.updateMissingDueDatesToday(),
+    });
+
+    //Command to convert tasks in a directory into notes with frontmatter
+    this.addCommand({
+      id: 'convert-tasks-to-notes',
+      name: 'Convert tasks in directory to notes',
+      callback: () => this.convertTasksToNotes(),
+    });
+  }
+
+  // Command function: Convert tasks in a directory into notes with frontmatter
+  async convertTasksToNotes() {
+    const files = this.app.vault.getMarkdownFiles();
+    console.log({files});
+    for (let file of files) {
+      console.log({file});
+      await this.convertTasksToNotesInFile(file);
+    }
+
+    new Notice(
+      files.length > 0
+        ? 'Tasks converted to notes!'
+        : 'No tasks found to convert.'
+    );
+  }
+
+  async convertTasksToNotesInFile(file: TFile) {
+    const tasks = await this.extractTasksFromNotes(file);
+    console.log({tasks});
+    if (tasks.length === 0) return;
+    for (let task of tasks) {
+      console.log({tasks});
+      const data = this.createNoteFromTask(file, task);
+      console.log({data});
+      this.replaceTaskWithLink(file, task, data, data.link);
+
+    }
+  }
+
+  // Extract tasks from notes, return array
+  async extractTasksFromNotes(file: TFile) {
+    let tasks: string[] = [];
+    // Regex to match tasks (lines starting with "- [ ]") ignoring tasks that start with - [ ] [TASK_
+    const taskRegex = /^- \[ \] (?!\[TASK_).+/gm;
+
+    console.log("extract", {file});
+    await this.app.vault.process(file, (data) => {
+      console.log({data});
+      const match = data.match(taskRegex) ?? [];
+      console.log({match});
+      console.log("before: ", {tasks})
+      tasks = [...tasks, ...match];
+      console.log("after", {tasks});
+      return data;
+    })
+    return tasks;
+  }
+
+  generateObsidianUrlFromDirAndTitle(dir: string, title: string) {
+    return `obsidian://open?vault=${encodeURIComponent(this.app.vault.getName())}&file=${encodeURIComponent(dir + "/" + title)}.md`;
+  
+  }
+
+  parseDatesTagsTitles(taskText : string){
+    const task : Task = {
+      title: "",
+      due: "",
+      tags: [],
+      link: ""
+    };
+    let regexDateMatch = /📅\s(\d{4}-\d{2}-\d{2})/g;
+    let taskParts = taskText.split(' ');
+        
+    //parse due date
+    let dateMatch = taskText.match(regexDateMatch);
+    if (dateMatch) {
+      task.due = dateMatch[0].slice(2);
+    }
+        
+    //parse tags
+    for (let i = 0; i < taskParts.length; i++) {
+      if (taskParts[i].startsWith("#")) {
+        task.tags.push(taskParts[i].slice(1));
+      }
+    }
+    
+    //parse title
+    let titleStart = taskParts.findIndex((part) => part.startsWith("#") || part.startsWith("📅"));
+    console.log({titleStart});
+    task.title = `TASK_${taskParts.slice(0, (titleStart > 0 ? titleStart : taskParts.length)).join(' ')}`;
+
+    return task;
+  }
+
+  // Create note from task, return link to note as string
+  createNoteFromTask(file: TFile, task: string) {
+    const noteTitle = task.slice(6).trim();
+    const directory = file.path.slice(0, -3);
+    if (!this.app.vault.getAbstractFileByPath(directory)) {
+      this.app.vault.createFolder(directory);
+    }
+
+    const data : Task = this.parseDatesTagsTitles(noteTitle);
+    console.log({data});
+    const notePath = `${directory}/${data.title}.md`;
+    const url = this.generateObsidianUrlFromDirAndTitle(directory, data.title ?? "");
+    data.link = `[${data.title}](${url})`;
+    const noteContent = `---
+title: ${data.title}
+date: ${data.due}
+tags: ${data.tags.map((tag) => `\n- ${tag}`).join('')}
+--- `;
+    this.app.vault.create(notePath, noteContent);
+    return data;
+  }
+
+  //replace task in file with link to note
+  replaceTaskWithLink(file: TFile, task: string, data: Task, link: string) {
+    this.app.vault.process(file, (content) => {
+      console.log('replace', {file});
+      return content.replace(task, `- [ ] ${link} ${data.tags.map((tag) => `#${tag}`).join(' ') ?? ''} ${data.due ? `📅 ${data.due}` : ''}`);
     });
   }
 
