@@ -76,7 +76,9 @@ export default class UpdateTaskDueDatesPlugin extends Plugin {
   // Extract tasks from notes, return array
   async extractTasksFromNotes(file: TFile) {
     let tasks: string[] = [];
-    const taskRegex = /^- \[ \] .+/gm;
+    // Regex to match tasks (lines starting with "- [ ]") ignoring tasks that start with - [ ] [TASK_
+    const taskRegex = /^- \[ \] (?!\[TASK_).+/gm;
+
     console.log("extract", {file});
     await this.app.vault.process(file, (data) => {
       console.log({data});
